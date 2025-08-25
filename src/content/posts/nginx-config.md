@@ -1,0 +1,224 @@
+---
+title: Nginx 安装指南
+published: 2025-08-24
+pinned: true
+description: 在Linux系统下两种不同的安装Nginx服务的方式
+tags: [nginx, install]
+category: Tutorial
+author: kkcat
+---
+# Nginx 安装指南
+
+---
+
+## 方式一：使用软件包管理器
+
+#### 1. Debian/Ubuntu 系统
+
+```bash
+# 首先，更新软件包列表并升级现有软件包
+sudo apt update && sudo apt upgrade -y
+
+# 然后，安装 Nginx
+sudo apt install nginx -y
+```
+
+#### 2. Red Hat/CentOS/Fedora 系统
+
+对于使用 `yum` 的系统 (如 CentOS 7):
+```bash
+# 更新软件包
+sudo yum update -y
+
+# 安装 Nginx
+sudo yum install nginx -y
+```
+
+对于使用 `dnf` 的系统 (如 CentOS 8+, Fedora):
+```bash
+# 升级软件包
+sudo dnf upgrade -y
+
+# 安装 Nginx
+sudo dnf install nginx -y
+```
+
+#### 3. 服务管理 (Systemd)
+
+可以使用 `systemctl`命令来管理 nginx
+
+- **启动 Nginx 服务：**
+
+```bash
+sudo systemctl start nginx
+```
+- **停止 Nginx 服务：**
+
+```bash
+sudo systemctl stop nginx
+```
+- **重启 Nginx 服务：**
+
+```bash
+sudo systemctl restart nginx
+```
+- **查看服务状态：**
+
+```bash
+sudo systemctl status nginx
+```
+- **设置开机自启：**
+
+```bash
+sudo systemctl enable nginx
+```
+- **取消开机自启：**
+
+```bash
+sudo systemctl disable nginx
+```
+
+---
+
+## 方式二：编译安装
+
+
+### 1. 选择并下载源码包
+
+首先，需要从 [Nginx 官网](https://nginx.org/en/download.html) 下载源码,其中有不同的版本
+
+- **主线版 (Mainline Version)**
+
+开发版本，包含最新的功能，经常更新不够稳定。
+
+- **稳定版 (Stable Version)**
+
+不再添加新功能，只修复 Bug 和安全补丁。
+
+- **历史版 (Legacy Versions)**
+
+已停止维护的旧版本。
+
+```bash
+#下载
+wget https://nginx.org/download/nginx-1.28.0.tar.gz
+# 解压
+tar -zxvf nginx-1.28.0.tar.gz
+# 保持目录规范
+sudo mv ./nginx-1.28.0 /usr/local/src/nginx-1.28.0
+sudo cd /usr/local/src/nginx-1.28.0
+```
+
+### 2. 安装编译依赖
+```bash
+# 对于 Debian/Ubuntu 系统
+sudo apt install build-essential libpcre3-dev zlib1g-dev libssl-dev -y
+
+# 对于 CentOS/Red Hat 系统
+sudo yum install gcc pcre-devel zlib-devel openssl-devel -y
+```
+
+### 3. 编译与安装
+具体源码目录如下
+``` text
+nginx-1.28.0/
+├── auto/          # 存放大量用于 configure 脚本的检测和构建逻辑
+├── CHANGES        # 版本更新日志（英文）
+├── CHANGES.ru     # 版本更新日志（俄文）
+├── conf/          # 存放默认的配置文件模板
+│   ├── fastcgi.conf.default
+│   ├── mime.types.default
+│   └── nginx.conf.default
+├── configure      # 编译前用于生成 Makefile 的配置脚本
+├── contrib/       # 社区贡献的一些有用脚本和工具（如 Vim 语法高亮插件）
+├── html/          # 存放默认的欢迎页面和错误页面
+│   ├── 50x.html
+│   └── index.html
+├── LICENSE        # Nginx 的许可证文件
+├── man/           # Nginx 的 man 帮助文档
+└── src/           # Nginx 的全部 C 语言源代码
+```
+使用`configure`生成具体的make配置
+
+具体参数可使用`./configure --help` 查看
+``` bash
+./configure \
+    --prefix=/usr/local/nginx \
+    --sbin-path=/usr/local/sbin/nginx \
+    --conf-path=/etc/nginx/nginx.conf \
+    --pid-path=/var/run/nginx.pid \
+    --lock-path=/var/run/nginx.lock \
+    --error-log-path=/var/log/nginx/error.log \
+    --http-log-path=/var/log/nginx/access.log \
+    --user=www \
+    --group=www \
+    --with-http_ssl_module \
+    --with-http_v2_module \
+    --with-http_stub_status_module
+```
+使用 `make` 来编译安装
+``` bash
+make && sudo make install
+```
+
+###  4. 注册系统服务
+输入
+``` bash
+sudo vim /etc/systemd/system/nginx.service
+```
+粘贴
+``` ini
+[Unit]
+# Description 在使用 systemctl status 看到的描述
+Description=The NGINX HTTP and reverse proxy server
+# After 在以下服务启动之后启动
+After=syslog.target network.target remote-fs.target nss-lookup.target
+
+[Service]
+Type=forking
+PIDFile=/var/run/nginx.pid
+
+# ExecStart 定义启动服务时执行的命令。
+ExecStart=/usr/local/sbin/nginx
+
+# ExecReload: 定义重载服务时执行的命令 (对应 systemctl reload nginx)。
+ExecReload=/usr/local/sbin/nginx -s reload
+
+# ExecStop: 定义停止服务时执行的命令 (对应 systemctl stop nginx)。
+ExecStop=/usr/local/sbin/nginx -s quit
+
+# PrivateTmp: 一个重要的安全增强选项。
+# 设置为 'true' 表示 systemd 会为该服务创建一个私有的、独立的临时文件目录 (/tmp)，与系统其他进程的临时文件隔离。
+PrivateTmp=true
+
+# [Install] 部分：定义如何将此服务“安装”到系统中（即 `systemctl enable` 命令的作用）
+[Install]
+# WantedBy: 定义该服务所属的目标。
+# 'multi-user.target' 是系统的标准运行级别（类似于旧的 runlevel 3/5），
+# 表示当系统进入多用户模式时，并且该服务被 'enable' 后，它就应该被启动。这是实现开机自启的关键。
+WantedBy=multi-user.target
+```
+重新加载配置
+``` bash
+sudo systemctl daemon-reload
+```
+
+### 5. 配置www账户
+#### 1. Debian/Ubuntu 系统
+
+```bash
+# 创建 www 用户组
+sudo groupadd www
+
+# 创建一个系统账户，属于www用户组，禁止使用sh, 不创建主目录
+sudo useradd -r -g www -s /bin/false -M www
+```
+
+#### 2. Red Hat/CentOS/Fedora 系统
+
+```bash
+sudo groupadd www
+sudo useradd -r -g www -s /sbin/nologin -M www
+```
+
+---
