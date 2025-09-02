@@ -44,7 +44,7 @@ export const siteConfig: SiteConfig = {
 
 		// 支持单张图片或图片数组，当数组长度 > 1 时自动启用轮播
 		src: {
-			desktop: ["/assets/mobile-banner/0.jpg"], // 桌面横幅图片
+			desktop: ["/assets/desktop-banner/0.jpg"], // 桌面横幅图片
 			mobile: ["/assets/mobile-banner/0.jpg"], // 移动横幅图片
 		}, // 使用本地横幅图片
 
