@@ -6,6 +6,8 @@
 		"dev": "astro dev",
 		"start": "astro dev",
 		"check": "astro check",
+		"deploy": "sudo rsync -av --delete dist/ /var/www/html/blog.kkcat.top/",
+		"build-and-deploy": "pnpm run build && pnpm run deploy",
 		"build": "astro build && pagefind --site dist",
 		"preview": "astro preview",
 		"astro": "astro",
